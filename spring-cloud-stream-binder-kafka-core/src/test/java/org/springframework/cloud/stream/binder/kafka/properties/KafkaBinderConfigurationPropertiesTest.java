@@ -16,15 +16,22 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.assertj.core.util.Files;
 import org.junit.Test;
 
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -141,5 +148,35 @@ public class KafkaBinderConfigurationPropertiesTest {
 				Paths.get(Files.currentFolder().toString(), "target", "testclient.truststore").toString());
 		assertThat(configuration.get("ssl.keystore.location")).isEqualTo(
 				Paths.get(Files.currentFolder().toString(), "target", "testclient.keystore").toString());
+	}
+
+	@Test
+	public void testLoadJksTruststore() throws IOException {
+		final KafkaProperties kafkaProperties = new KafkaProperties();
+		final KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties =
+				new KafkaBinderConfigurationProperties(kafkaProperties);
+		final Map<String, String> configuration = kafkaBinderConfigurationProperties.getConfiguration();
+		final String truststore = readClasspathResource("testclient.truststore.base64");
+		final String keystore = readClasspathResource("testclient.keystore.base64");
+		configuration.put("ssl.truststore.location", "base64:" + truststore);
+		configuration.put("ssl.truststore.password", "123456");
+		configuration.put("ssl.truststore.type", "PKCS12");
+		configuration.put("ssl.keystore.location", "base64:" + keystore);
+		configuration.put("ssl.keystore.password", "123456");
+		configuration.put("ssl.keystore.type", "PKCS12");
+		kafkaBinderConfigurationProperties.setCertificateStoreDirectory("target");
+
+		kafkaBinderConfigurationProperties.getKafkaConnectionString();
+
+		assertThat(configuration.containsKey("ssl.truststore.location")).isFalse();
+		assertThat(configuration.containsKey("ssl.keystore.location")).isFalse();
+	}
+
+	private String readClasspathResource(String classpathResource) throws IOException {
+		final Resource resource = new ClassPathResource(classpathResource);
+		try (BufferedReader reader = new BufferedReader(
+				new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+			return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+		}
 	}
 }

@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +24,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,6 +51,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.expression.Expression;
 import org.springframework.util.Assert;
+import org.springframework.util.Base64Utils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
@@ -164,16 +170,26 @@ public class KafkaBinderConfigurationProperties {
 	private void moveCertsToFileSystemIfNecessary() {
 		try {
 			final String trustStoreLocation = this.configuration.get("ssl.truststore.location");
-			if (trustStoreLocation != null && trustStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateStoreDirectory);
-				// Overriding the value with absolute filesystem path.
-				this.configuration.put("ssl.truststore.location", fileSystemLocation);
+			if (trustStoreLocation != null) {
+				if (trustStoreLocation.startsWith("classpath:")) {
+					final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateStoreDirectory);
+					// Overriding the value with absolute filesystem path.
+					this.configuration.put("ssl.truststore.location", fileSystemLocation);
+				}
+				else if (trustStoreLocation.startsWith("base64:")) {
+					extractJks("truststore", trustStoreLocation);
+				}
 			}
 			final String keyStoreLocation = this.configuration.get("ssl.keystore.location");
-			if (keyStoreLocation != null && keyStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateStoreDirectory);
-				// Overriding the value with absolute filesystem path.
-				this.configuration.put("ssl.keystore.location", fileSystemLocation);
+			if (keyStoreLocation != null) {
+				if (keyStoreLocation.startsWith("classpath:")) {
+					final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateStoreDirectory);
+					// Overriding the value with absolute filesystem path.
+					this.configuration.put("ssl.keystore.location", fileSystemLocation);
+				}
+				else if (keyStoreLocation.startsWith("base64:")) {
+					extractJks("keystore", keyStoreLocation);
+				}
 			}
 		}
 		catch (Exception e) {
@@ -205,6 +221,25 @@ public class KafkaBinderConfigurationProperties {
 			Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 		return targetFile.getAbsolutePath();
+	}
+
+	private void extractJks(String key, String location) throws IOException {
+		final String password = this.configuration.get(String.format("ssl.%s.password", key));
+		final String storeType = this.configuration.get(String.format("ssl.%s.type", key));
+		final String encodedJks = location.substring("base64:".length());
+		final byte[] jks = Base64Utils.decodeFromString(encodedJks);
+		logger.info("Loading JKS " + key + " from Base64");
+		try {
+			final KeyStore keyStore = KeyStore.getInstance(storeType);
+			final InputStream inputStream = new ByteArrayInputStream(jks);
+			keyStore.load(inputStream, password.toCharArray());
+		}
+		catch (KeyStoreException | NoSuchAlgorithmException | CertificateException e) {
+			throw new IOException("Problem opening JKS", e);
+		}
+		// Remove these values for security
+		this.configuration.remove(String.format("ssl.%s.location", key));
+		this.configuration.remove(String.format("ssl.%s.password", key));
 	}
 
 	public String getDefaultKafkaConnectionString() {

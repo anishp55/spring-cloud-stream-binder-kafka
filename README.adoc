@@ -808,6 +808,37 @@ When the binder discovers that these customizers are available as beans, it will
 
 Both of these interfaces also provide access to both the binding and destination names so that they can be accessed while customizing producer and consumer properties.
 
+[[base64-jks]]
+=== Using Base64 Encoded JKS
+
+If you want to pass your JKS Truststore and/or Keystore for consumers and/or producers in Base64, simply prepend the appropriate
+key with `base64:` in your configuration.
+
+====
+[source, yaml]
+----
+spring:
+  kafka:
+    consumer:
+      ssl.key-store-location: base64:<Base64 Encoded JKS>
+      ssl.key-store-password: mypassword
+      ssl.key-store-type: PKCS12
+      ssl.trust-store-location: base64:<Base64 Encoded JKS>
+      ssl.trust-store-password: mypassword
+      ssl.trust-store-type: PKCS12
+    producer:
+      ssl.key-store-location: base64:<Base64 Encoded JKS>
+      ssl.key-store-password: mypassword
+      ssl.key-store-type: PKCS12
+      ssl.trust-store-location: base64:<Base64 Encoded JKS>
+      ssl.trust-store-password: mypassword
+      ssl.trust-store-type: PKCS12
+----
+
+====
+When using this functionality, `-store-password` and `-store-type` for each respective JKS are required. At this time,
+only PKCS12 has been tested.
+
 = Appendices
 [appendix]
 [[building]]
