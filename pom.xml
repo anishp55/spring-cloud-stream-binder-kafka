@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>spring-cloud-stream-binder-kafka-parent</artifactId>
-	<version>3.1.0</version>
+	<version>3.1.0-base64-jks</version>
 	<packaging>pom</packaging>
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
@@ -164,12 +164,12 @@
 				</plugin>
 			</plugins>
 		</pluginManagement>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-checkstyle-plugin</artifactId>
-			</plugin>
-		</plugins>
+<!--		<plugins>-->
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-checkstyle-plugin</artifactId>-->
+<!--			</plugin>-->
+<!--		</plugins>-->
 	</build>
 
 	<profiles>
@@ -243,12 +243,12 @@
 			</pluginRepositories>
 		</profile>
 	</profiles>
-	<reporting>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-checkstyle-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</reporting>
+<!--	<reporting>-->
+<!--		<plugins>-->
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-checkstyle-plugin</artifactId>-->
+<!--			</plugin>-->
+<!--		</plugins>-->
+<!--	</reporting>-->
 </project>

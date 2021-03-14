@@ -164,32 +164,39 @@ public class KafkaBinderConfigurationProperties {
 		// and this: https://cwiki.apache.org/confluence/display/KAFKA/KIP-398%3A+Support+reading+trust+store+from+classpath
 		moveCertsToFileSystemIfNecessary();
 
+		extractBase64StoresIfNecessary();
+
 		return toConnectionString(this.brokers, this.defaultBrokerPort);
+	}
+
+	private void extractBase64StoresIfNecessary() {
+		try {
+			final String trustStoreBase64 = this.configuration.get("ssl.truststore.base64");
+			if (trustStoreBase64 != null && !trustStoreBase64.trim().isEmpty()) {
+				extractJks("truststore", trustStoreBase64);
+			}
+			final String keyStoreBase64 = this.configuration.get("ssl.keystore.base64");
+			if (keyStoreBase64 != null && !keyStoreBase64.trim().isEmpty()) {
+				extractJks("keystore", keyStoreBase64);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
 	private void moveCertsToFileSystemIfNecessary() {
 		try {
 			final String trustStoreLocation = this.configuration.get("ssl.truststore.location");
-			if (trustStoreLocation != null) {
-				if (trustStoreLocation.startsWith("classpath:")) {
-					final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateStoreDirectory);
-					// Overriding the value with absolute filesystem path.
-					this.configuration.put("ssl.truststore.location", fileSystemLocation);
-				}
-				else if (trustStoreLocation.startsWith("base64:")) {
-					extractJks("truststore", trustStoreLocation);
-				}
+			if (trustStoreLocation != null && trustStoreLocation.startsWith("classpath:")) {
+				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateStoreDirectory);
+				// Overriding the value with absolute filesystem path.
+				this.configuration.put("ssl.truststore.location", fileSystemLocation);
 			}
 			final String keyStoreLocation = this.configuration.get("ssl.keystore.location");
-			if (keyStoreLocation != null) {
-				if (keyStoreLocation.startsWith("classpath:")) {
-					final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateStoreDirectory);
-					// Overriding the value with absolute filesystem path.
-					this.configuration.put("ssl.keystore.location", fileSystemLocation);
-				}
-				else if (keyStoreLocation.startsWith("base64:")) {
-					extractJks("keystore", keyStoreLocation);
-				}
+			if (keyStoreLocation != null && keyStoreLocation.startsWith("classpath:")) {
+				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateStoreDirectory);
+				// Overriding the value with absolute filesystem path.
+				this.configuration.put("ssl.keystore.location", fileSystemLocation);
 			}
 		}
 		catch (Exception e) {
@@ -223,11 +230,10 @@ public class KafkaBinderConfigurationProperties {
 		return targetFile.getAbsolutePath();
 	}
 
-	private void extractJks(String key, String location) throws IOException {
+	private void extractJks(String key, String encoded) throws IOException {
 		final String password = this.configuration.get(String.format("ssl.%s.password", key));
 		final String storeType = this.configuration.get(String.format("ssl.%s.type", key));
-		final String encodedJks = location.substring("base64:".length());
-		final byte[] jks = Base64Utils.decodeFromString(encodedJks);
+		final byte[] jks = Base64Utils.decodeFromString(encoded);
 		logger.info("Loading JKS " + key + " from Base64");
 		try {
 			final KeyStore keyStore = KeyStore.getInstance(storeType);
